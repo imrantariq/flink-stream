@@ -1,33 +1,53 @@
-### Fraud Detection Demo with Apache Flink
 
-#### Requirements:
-Demo is bundled in a self-contained package. In order to build it from sources you will need:
 
- - git
- - docker
- - docker-compose
+#### This project is taken from another Github repository
 
- Recommended resources allocated to Docker:
+https://github.com/afedulov/fraud-detection-demo
 
- - 4 CPUs
- - 8GB RAM
 
- You can checkout the repository and run the demo locally.
+This is customised version of that project where its setup to run locally and can process multiple rules and transactions
 
-#### How to run:
 
-In order to run the demo locally, execute the following commands which build the project from sources and start all required services, including the Apache Flink and Apache Kafka clusters.
+Rules
+-----
+Can be sent to stream via netcat
 
-```bash
-git clone https://github.com/afedulov/fraud-detection-demo
-docker build -t demo-fraud-webapp:latest -f webapp/webapp.Dockerfile webapp/
-docker build -t flink-job-fraud-demo:latest -f flink-job/Dockerfile flink-job/
-docker-compose -f docker-compose-local-job.yaml up
-```
+nc -lk 9991
 
-__Note__: Dependencies are stored in a cached Docker layer. If you later only modify the source code, not the dependencies, you can expect significantly shorter packaging times for the subsequent builds.
 
-When all components are up and running, go to `localhost:5656` in your browser.
+Sample Rule
+{ "ruleType": "default", "ruleId": 1, "ruleState": "ACTIVE", "groupingKeyNames": ["paymentType"], "unique": [], "aggregateFieldName": "paymentAmount", "aggregatorFunctionType": "SUM","limitOperatorType": "GREATER","limit": 50, "windowMinutes": 2}
 
-__Note__: you might need to change exposed ports in _docker-compose-local-job.yaml_ in case of collisions.
+
+Examples of Rule Control Commands to delete Rule etc:
+{"ruleState": "CONTROL", "controlType":"DELETE_RULES_ALL"}
+{"ruleState": "CONTROL", "controlType":"EXPORT_RULES_CURRENT"}
+{"ruleState": "CONTROL", "controlType":"CLEAR_STATE_ALL"}
+
+
+Transaction/Event
+-----------------
+Can be sent to stream via netcat
+
+nc -lk 9992
+
+
+Sample Transaction/Event
+
+{"ruleType": "default","transactionId": 1,"eventTime": 1631261698733,"payeeId": 2,"beneficiaryId": 2,"paymentAmount": 22,"paymentType": "CSH"}
+
+
+Sample Output alert
+{"ruleId":2,"violatedRule":{"ruleId":2,"ruleState":"ACTIVE","groupingKeyNames":["paymentType"],"unique":[],"aggregateFieldName":"paymentAmount","aggregatorFunctionType":"SUM","limitOperatorType":"LESS_EQUAL","limit":500,"windowMinutes":2,"controlType":null,"windowMillis":120000},"key":"{paymentType=CSH}","triggeringEvent":{"transactionId":2,"eventTime":1,"payeeId":2,"beneficiaryId":2,"paymentAmount":332,"paymentType":"CSH","ingestionTimestamp":1631192911550},"triggeringValue":332}
+
+========
+HackRule (RuleType2)
+----
+{ "ruleType": "hackrule", "ruleId": 11, "ruleState": "ACTIVE", "groupingKeyNames": ["email"], "aggregateFieldName": "attempt", "aggregatorFunctionType": "SUM","limitOperatorType": "GREATER","limit": 2, "windowMinutes": 2}
+
+
+Transaction
+{ "ruleType": "hackrule", "transactionId": 1, "eventTime": 1631261698733,"email": "test@gmail.com","attempt": 2}
+{ "ruleType": "hackrule", "transactionId": 1, "eventTime": 163126169,"email": "abc@gmail.com","attempt": 2}
+
 
